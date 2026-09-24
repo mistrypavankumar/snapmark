@@ -22,15 +22,18 @@ export function Overlay() {
 
   useEffect(() => {
     let objectUrl: string | null = null
+    let cancelled = false
     api
       .getOverlayInit()
       .then((data) => {
+        if (cancelled) return
         objectUrl = URL.createObjectURL(new Blob([data.preview as BlobPart], { type: 'image/jpeg' }))
         setInit(data)
         setUrl(objectUrl)
       })
       .catch(() => api.finishSelection(null))
     return () => {
+      cancelled = true
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [])

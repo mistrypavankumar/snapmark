@@ -1,6 +1,6 @@
 # Snapmark — build progress & handoff notes
 
-_Last updated: 2026-09-23. Written mid-build so work can resume from here._
+_Last updated: 2026-09-24. The build is complete; see README.md for usage._
 
 ## Goal (the user's spec, condensed)
 
@@ -111,73 +111,38 @@ keys nudge (Shift ×10), ⌘D duplicates, Space+drag pans. Menu shortcuts: ⌘Z 
 ⇧⌘C / ⌘C copy image, ⌘= ⌘- ⌘0 ⌘1, ⌘] ⌘[ (⇧ for front/back), ⇧⌘⌫ clear all, ⌘O,
 ⌘N new from clipboard.
 
-## Status
+## Status (2026-09-24): complete
 
-### Done (written, **not yet compiled or tested**)
-Every file listed under Architecture, plus the configs: `package.json` scripts,
-`electron.vite.config.ts`, the tsconfigs (node/web), `vitest.config.ts`,
-`electron-builder.yml`, `.gitignore`.
+All the missing pieces were written: `index.html` (CSP), `main.tsx`, `views/Home.tsx`,
+`views/Overlay.tsx`, `views/Toast.tsx`, `styles.css`, `scripts/generate-icons.mjs`, unit tests in
+`tests/`, and the Playwright smoke test in `e2e/smoke.mjs`. Typecheck, 56 unit tests, the build,
+the e2e run, and `dist` all pass. The packaged app is ad-hoc signed (`codesign --verify` passes).
 
-Note: `out/` contains a stale partial build. Ignore it; `npm run build` regenerates it.
+Fixes made while verifying:
+- **Electron 44 clipboard:** the API is now async and W3C-style (`read`/`write` with
+  `ClipboardItem`), so `images.ts` was ported to it. A Finder file copy is read from the raw
+  `public.file-url` type.
+- **Export silently did nothing:** `canvasRefs` was filled in a mount effect, but the Stage mounts
+  later, once it has a size. Callback refs fixed it, and export now reports an error if the canvas
+  is missing.
+- **First-run permission:** macOS reports `denied` before the app ever asks, and the old code gave
+  up without calling `desktopCapturer`. The prompt never appeared, and Snapmark never showed up
+  in the Screen Recording list. `ensureScreenPermission()` now makes one real request per launch.
+- React, Konva, and zustand moved to devDependencies (Vite bundles them), so `node_modules` no
+  longer ships in the asar.
+- Image paths passed on the command line now open in the editor, and the smoke test relies on
+  this. `SNAPMARK_FAKE_CAPTURE` is a test hook for unpackaged builds only.
 
-### Missing — still to write
-1. `src/renderer/index.html`, with a CSP meta tag (`default-src 'self'; img-src 'self' blob: data:;
-   style-src 'self' 'unsafe-inline'`). Check that it works in dev with the React refresh preamble.
-2. `src/renderer/src/main.tsx`: route on `?view=home|overlay|editor`.
-3. `src/renderer/src/views/Toast.tsx`: `Editor.tsx` imports `{ Toast }` with no props. Either
-   make it read `editorStore.notice`, or change it to accept a `notice` prop and update
-   `Editor.tsx`. Home needs one too.
-4. `src/renderer/src/views/Home.tsx`: capture button (shows the shortcut), open, paste, drop
-   zone, paste event. Permission card when not granted: steps for System Settings → Privacy &
-   Security → Screen & System Audio Recording → enable Snapmark → Quit & Reopen, with buttons
-   calling `openScreenRecordingSettings` and `relaunch`. Re-check status on focus. Handle
-   `onShowPermissionHelp` (highlight the card) and `onNotice` (toast). Warn when
-   `shortcutUnavailable`. Footer: "stays on this Mac".
-5. `src/renderer/src/views/Overlay.tsx`: frozen JPEG preview (object URL) → `overlayReady()`
-   on load. Dim everything outside the selection (a selection div with a huge box-shadow),
-   crosshair guides, a size readout in physical px (×`pixelRatio`), a hint pill. Update the
-   drag directly on the DOM. On release, a selection ≥3px calls `finishSelection(rect)`; a
-   plain click captures the full display. Esc calls `finishSelection(null)`.
-6. `src/renderer/src/styles.css`: the polished UI. Classes in use: `editor toolbar drag-region
-   no-drag traffic-light-space tool-group icon-btn tool-btn small spacer actions btn btn-primary
-   ghost inspector field segmented field-label field-value slider swatch custom sr-only hint
-   stage-area canvas-wrap tool-* panning grabbing over-annotation text-editor is-callout is-text
-   statusbar zoom-controls zoom-value center-message`. Use light and dark variables. The
-   hiddenInset title bar needs about 78px of left padding. `--icon-contrast` is used by the
-   callout icon.
-7. `scripts/generate-icons.mjs` (`npm run icons`): a zlib PNG writer. Generate
-   `resources/trayTemplate.png` (16px) and `trayTemplate@2x.png` (black glyph plus alpha)
-   and `build/icon.png` (1024px app icon).
-8. Tests in `tests/`: history (undo, redo, coalesce, limit), doc (reorder/remove), store
-   (finishEditing adds/removes, clear is undoable, setStyle applies and coalesces),
-   geometry (callout tail null/inside and exact tip, bakeTransform for each type, fitView,
-   zoomAt keeps its anchor fixed, stepZoom), and main `captureMath` (Retina 2×, fractional
-   scale, clamping, outward rounding, sniff).
-9. Optional e2e smoke test with Playwright `_electron`: open a known image through an env
-   var, draw a callout, copy, and check that the clipboard image size equals the source size.
-10. Run `npm run typecheck`, `npm test`, `npm run build`, `npm run dist`, and fix the errors.
-    Confirm the ad-hoc signature with `codesign -dv dist/mac-arm64/Snapmark.app`.
-11. Final report: files, commands, limitations, remaining work.
+Things verified along the way: the dev-mode React Refresh preamble is injected above the CSP
+`<meta>`, so it runs. CDP-synthesized keys don't trigger app-menu accelerators, which is why the
+e2e test clicks menu items directly. Real keystrokes go through the menu as designed.
 
-### Known risks / things to verify
-- The overlay covering the menu bar (`setBounds` after show, panel type). Spaces with
-  full-screen apps.
-- Whether `desktopCapturer` returns `display_id` on this macOS (26.6.2); there is an order
-  fallback.
-- Menu accelerators versus renderer keydown ordering. The design avoids double firing either
-  way, but still verify ⌘Z inside the textarea.
-- `layer.clone()` keeps custom `sceneFunc`/`hitFunc` and attributes. `renderPng` asserts the
-  output size.
-- `setPermissionCheckHandler(() => false)` must not break anything the renderer needs.
-- react-konva doesn't reset attributes that aren't passed as props. That's why drag/transform
-  end handlers reset position and scale manually.
+Still unverified (needs real hardware and interaction): the overlay over the menu bar and
+full-screen Spaces, real multi-display capture with permission granted, and ⌘Z inside the
+textarea with a real keyboard.
 
-### Limitations to report
-- Screen Recording permission is tied to the code signature. An ad-hoc build must be granted
-  again after each rebuild, and the app must restart after granting. In dev, permission is
-  attributed to the launching terminal or Electron.
-- A selection can't span two displays. One overlay per display.
-- There's no notarization or Developer ID, so the first launch needs right-click → Open.
-- The shortcut is fixed (⌘⇧2) with no settings UI. PNGs carry no DPI metadata, so Retina
-  captures paste at 2× size in some apps.
-- Capture can't include the cursor, and there's no window-picking mode.
+### Remaining ideas
+- Developer ID signing + notarization; universal (x64) build.
+- Configurable shortcut; window-capture mode; PNG pHYs (DPI) chunk for Retina exports.
+- Unrelated leftover: `~/Developer/screenshot` (the abandoned Next.js scaffold) still exists.
+  Ask before deleting it.

@@ -1,0 +1,31 @@
+appId: com.pavankumarmistry.snapmark
+productName: Snapmark
+copyright: Copyright © 2026 Pavan Kumar Mistry
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - resources/**
+  - package.json
+  - '!**/*.map'
+asar: true
+mac:
+  category: public.app-category.graphics-design
+  icon: build/icon.png
+  # Ad-hoc signature: required for Apple Silicon to launch the app. Replace
+  # with a Developer ID identity (and enable notarization) for distribution.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+  extendInfo:
+    LSUIElement: false
+    NSHighResolutionCapable: true
+dmg:
+  title: Snapmark ${version}
+npmRebuild: false

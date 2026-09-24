@@ -294,6 +294,68 @@ export function isMeaningful(a: Annotation, minSize: number): boolean {
   }
 }
 
+export function arrowHeadLength(strokeWidth: number) {
+  return Math.max(12, strokeWidth * 3.6)
+}
+
+/** Visual bounds of an annotation in image coordinates, including stroke and arrowhead. */
+export function annotationBounds(a: Annotation, measure: TextMeasurer): Rect {
+  const fromPoints = (xs: number[], ys: number[], pad: number): Rect => {
+    const x = Math.min(...xs) - pad
+    const y = Math.min(...ys) - pad
+    return { x, y, w: Math.max(...xs) + pad - x, h: Math.max(...ys) + pad - y }
+  }
+  switch (a.type) {
+    case 'line':
+      return fromPoints([a.x1, a.x2], [a.y1, a.y2], a.strokeWidth / 2)
+    case 'arrow':
+      // The head's half-width is 0.58 × its length.
+      return fromPoints([a.x1, a.x2], [a.y1, a.y2], Math.max(a.strokeWidth / 2, arrowHeadLength(a.strokeWidth) * 0.58))
+    case 'rect':
+    case 'ellipse':
+      return { x: a.x - a.strokeWidth / 2, y: a.y - a.strokeWidth / 2, w: a.w + a.strokeWidth, h: a.h + a.strokeWidth }
+    case 'pen':
+    case 'highlight':
+      return fromPoints(
+        a.points.filter((_, i) => i % 2 === 0),
+        a.points.filter((_, i) => i % 2 === 1),
+        a.strokeWidth / 2
+      )
+    case 'text': {
+      const size = textSize(a.text, a.fontSize, measure)
+      return { x: a.x, y: a.y, w: size.w, h: size.h }
+    }
+    case 'callout': {
+      const { label } = calloutGeometry(a, measure)
+      return fromPoints([label.x, label.x + label.w, a.tipX], [label.y, label.y + label.h, a.tipY], 0)
+    }
+  }
+}
+
+/**
+ * The exported area: the whole image, grown to include any annotation that
+ * extends past its edges (plus a small margin on those sides). Integer pixels.
+ */
+export function exportBounds(imageW: number, imageH: number, annotations: readonly Annotation[], measure: TextMeasurer): Rect {
+  let x1 = 0
+  let y1 = 0
+  let x2 = imageW
+  let y2 = imageH
+  for (const a of annotations) {
+    const b = annotationBounds(a, measure)
+    x1 = Math.min(x1, b.x)
+    y1 = Math.min(y1, b.y)
+    x2 = Math.max(x2, b.x + b.w)
+    y2 = Math.max(y2, b.y + b.h)
+  }
+  const margin = clamp(Math.round(Math.max(imageW, imageH) / 150), 4, 24)
+  const left = x1 < 0 ? Math.floor(x1) - margin : 0
+  const top = y1 < 0 ? Math.floor(y1) - margin : 0
+  const right = x2 > imageW ? Math.ceil(x2) + margin : imageW
+  const bottom = y2 > imageH ? Math.ceil(y2) + margin : imageH
+  return { x: left, y: top, w: right - left, h: bottom - top }
+}
+
 export const RED = '#e5372b'
 
 /** Per-tool defaults, scaled so strokes and text look right on 5K captures too. */

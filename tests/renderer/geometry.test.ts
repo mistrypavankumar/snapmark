@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   MAX_ZOOM,
+  annotationBounds,
+  exportBounds,
   MIN_ZOOM,
   applyStyle,
   bakeTransform,
@@ -208,5 +210,38 @@ describe('styles', () => {
     expect(isMeaningful(tiny, 3)).toBe(false)
     const dot: Annotation = { id: 'p', type: 'pen', points: [5, 5], ...base }
     expect(isMeaningful(dot, 3)).toBe(true)
+  })
+})
+
+describe('exportBounds', () => {
+  const arrowAt = (x1: number, y1: number, x2: number, y2: number): Annotation => ({ id: 'a', type: 'arrow', x1, y1, x2, y2, ...base })
+
+  it('is exactly the image when every annotation is inside it', () => {
+    expect(exportBounds(632, 559, [arrowAt(100, 100, 200, 200)], measure)).toEqual({ x: 0, y: 0, w: 632, h: 559 })
+    expect(exportBounds(632, 559, [], measure)).toEqual({ x: 0, y: 0, w: 632, h: 559 })
+  })
+
+  it('grows to include a callout label placed left of the image', () => {
+    const c = callout({ x: -180, y: 250, tipX: 100, tipY: 190 })
+    const b = exportBounds(632, 559, [c], measure)
+    expect(b.x).toBeLessThan(-180)
+    expect(b.y).toBe(0)
+    // The right and bottom edges are unchanged.
+    expect(b.x + b.w).toBe(632)
+    expect(b.h).toBe(559)
+    expect(Number.isInteger(b.x) && Number.isInteger(b.w)).toBe(true)
+  })
+
+  it('includes the arrowhead and stroke that cross the edge', () => {
+    const b = exportBounds(400, 300, [arrowAt(200, 150, 400, 150)], measure)
+    expect(b.w).toBeGreaterThan(400)
+    expect(b.x).toBe(0)
+  })
+
+  it('measures text and callout tips', () => {
+    const t: Annotation = { id: 't', type: 'text', x: 390, y: 10, text: 'Hello', fontSize: 20, ...base }
+    expect(annotationBounds(t, measure)).toEqual({ x: 390, y: 10, w: 50, h: 25 })
+    const c = annotationBounds(callout({ tipX: 150, tipY: 400 }), measure)
+    expect(c.y + c.h).toBe(400)
   })
 })

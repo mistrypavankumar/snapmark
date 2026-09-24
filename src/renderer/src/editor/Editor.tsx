@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MenuCommand } from '@shared/ipc'
-import { fitView, stepZoom, zoomAt } from '../lib/geometry'
+import { exportBounds, fitView, stepZoom, zoomAt } from '../lib/geometry'
+import { canvasMeasurer } from '../lib/text'
 import type { Tool } from '../lib/types'
 import { CanvasView, canvasRefs, isTyping } from './CanvasView'
 import { renderPng } from './exportImage'
@@ -88,7 +89,7 @@ export function Editor() {
     s.select(null)
     const layer = canvasRefs.content
     if (!layer || !s.image) throw new Error('the canvas isn’t ready yet')
-    return renderPng(layer, s.image.width, s.image.height)
+    return renderPng(layer, exportBounds(s.image.width, s.image.height, s.history.present, canvasMeasurer))
   }, [])
 
   const run = useCallback(
@@ -285,12 +286,21 @@ export function Editor() {
 function StatusBar() {
   const image = useEditor((s) => s.image)!
   const zoom = useEditor((s) => s.view.zoom)
-  const count = useEditor((s) => s.history.present.length)
+  const annotations = useEditor((s) => s.history.present)
+  const count = annotations.length
+  const out = useMemo(() => exportBounds(image.width, image.height, annotations, canvasMeasurer), [image, annotations])
+  const grown = out.w !== image.width || out.h !== image.height
   const dpr = window.devicePixelRatio || 1
   return (
     <footer className="statusbar">
       <span>
         {image.width} × {image.height} px
+        {grown && (
+          <span title="Annotations extend past the image, so the export grows to include them">
+            {' '}
+            → exports {out.w} × {out.h} px
+          </span>
+        )}
       </span>
       <span>
         {count} annotation{count === 1 ? '' : 's'}

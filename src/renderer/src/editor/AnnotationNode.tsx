@@ -2,7 +2,7 @@ import type Konva from 'konva'
 import type { Context } from 'konva/lib/Context'
 import { memo } from 'react'
 import { Ellipse, Line, Rect, Shape, Text } from 'react-konva'
-import { calloutGeometry, withAlpha, type CalloutGeometry } from '../lib/geometry'
+import { arrowHeadLength, calloutGeometry, withAlpha, type CalloutGeometry } from '../lib/geometry'
 import { CALLOUT_WEIGHT, FONT_FAMILY, LINE_HEIGHT, TEXT_WEIGHT, canvasMeasurer, fontString } from '../lib/text'
 import type { Annotation, Point } from '../lib/types'
 
@@ -22,10 +22,6 @@ interface Props extends NodeHandlers {
   hitSlop: number
   /** Hide text while it's being edited in the overlay. */
   hideText?: boolean
-}
-
-export function arrowHeadLength(strokeWidth: number) {
-  return Math.max(12, strokeWidth * 3.6)
 }
 
 /** Arrow with a sharp head: the shaft stops inside the head so thick round caps never blunt the tip. */

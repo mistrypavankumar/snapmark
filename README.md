@@ -14,7 +14,9 @@ No account, no backend, no uploads: images never leave the Mac.
   The label moves independently of the tip, and the tip has its own handle.
 - **Style:** color, stroke, fill (none/tint/solid), font size, callout padding, and opacity.
 - **Export:** Copy (⇧⌘C, or ⌘C when nothing is being typed) or Save as PNG (⌘S), always at the
-  image’s original pixel resolution.
+  image’s original pixel resolution. If annotations extend past the image edges, the export grows
+  to include them, and the added area is transparent. A dashed outline in the editor shows the
+  export area.
 
 ## Commands
 

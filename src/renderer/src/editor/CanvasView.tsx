@@ -8,6 +8,7 @@ import {
   calloutGeometry,
   dist,
   dragMove,
+  exportBounds,
   fitView,
   isMeaningful,
   normalizeRect,
@@ -389,6 +390,10 @@ export function CanvasView() {
     c.classList.toggle('over-annotation', onAnnotation && editorStore.getState().tool === 'select')
   }
 
+  const exportArea = useMemo(
+    () => exportBounds(image.width, image.height, rendered, canvasMeasurer),
+    [image, rendered]
+  )
   const hitSlop = HIT_SLOP_CSS / view.zoom
   const dpr = window.devicePixelRatio || 1
 
@@ -408,6 +413,18 @@ export function CanvasView() {
           onMouseOver={onMouseOver}
         >
           <Layer listening={false}>
+            {(exportArea.x < 0 || exportArea.y < 0 || exportArea.w > image.width || exportArea.h > image.height) && (
+              // Annotations reach past the image: the export grows to this area (transparent outside the image).
+              <Rect
+                x={exportArea.x}
+                y={exportArea.y}
+                width={exportArea.w}
+                height={exportArea.h}
+                stroke="rgba(128, 128, 128, 0.7)"
+                strokeWidth={1 / view.zoom}
+                dash={[6 / view.zoom, 4 / view.zoom]}
+              />
+            )}
             <Rect
               width={image.width}
               height={image.height}

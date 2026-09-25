@@ -347,20 +347,20 @@ export function CanvasView() {
     s.select(null)
     if (s.tool === 'text') {
       const style = s.styles.text
-      s.startEditing(
-        {
-          id: newId(),
-          type: 'text',
-          x: p.x,
-          y: p.y - style.fontSize * 0.6,
-          text: '',
-          fontSize: style.fontSize,
-          color: style.color,
-          strokeWidth: style.strokeWidth,
-          opacity: style.opacity
-        },
-        true
-      )
+      const draft = {
+        id: newId(),
+        type: 'text' as const,
+        x: p.x,
+        y: p.y - style.fontSize * 0.6,
+        text: '',
+        fontSize: style.fontSize,
+        color: style.color,
+        strokeWidth: style.strokeWidth,
+        opacity: style.opacity
+      }
+      // Start editing on release: focusing the textarea during pointerdown gets
+      // undone by the same click's mousedown, which blurs (and discards) it.
+      window.addEventListener('pointerup', () => editorStore.getState().startEditing(draft, true), { once: true })
       return
     }
     const g: Gesture = { kind: 'draw', tool: s.tool, start: p, id: newId() }
